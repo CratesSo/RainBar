@@ -17,8 +17,15 @@ final class RainEmitterView: NSView {
     private struct RainMetrics {
         let motionVector: CGSize
         let streakVector: CGSize
+        let strokeColor: NSColor
 
         init(settings: RainSettings) {
+            strokeColor = NSColor(
+                calibratedRed: settings.rainColor.red,
+                green: settings.rainColor.green,
+                blue: settings.rainColor.blue,
+                alpha: CGFloat(settings.opacity)
+            )
             let radians = settings.angle * .pi / 180
             let speed = CGFloat(380 * settings.speed)
             motionVector = CGSize(
@@ -84,12 +91,7 @@ final class RainEmitterView: NSView {
         super.draw(dirtyRect)
 
         if !particles.isEmpty {
-            NSColor(
-                calibratedRed: settings.rainColor.red,
-                green: settings.rainColor.green,
-                blue: settings.rainColor.blue,
-                alpha: CGFloat(settings.opacity)
-            ).setStroke()
+            metrics.strokeColor.setStroke()
 
             let path = NSBezierPath()
             path.lineWidth = CGFloat(settings.trailThickness)
@@ -163,24 +165,29 @@ final class RainEmitterView: NSView {
         let delta = max(0, min(now - lastTick, 1.0 / 20.0))
         lastTick = now
 
-        guard bounds.width > 0, bounds.height > 0 else {
+        let size = bounds.size
+        guard size.width > 0, size.height > 0 else {
             return
         }
 
         let margins = spawnMargins()
+        let movement = CGSize(
+            width: metrics.motionVector.width * delta,
+            height: metrics.motionVector.height * delta
+        )
 
         for index in particles.indices {
-            particles[index].point.x += metrics.motionVector.width * delta
-            particles[index].point.y += metrics.motionVector.height * delta
+            particles[index].point.x += movement.width
+            particles[index].point.y += movement.height
 
-            if particles[index].point.y > bounds.height {
+            if particles[index].point.y > size.height {
                 addSplash(at: CGPoint(
                     x: particles[index].point.x,
-                    y: bounds.height - 2
+                    y: size.height - 2
                 ))
                 particles[index] = spawnParticle(margins: margins)
             } else if particles[index].point.x < -margins.left
-                || particles[index].point.x > bounds.width + margins.right {
+                || particles[index].point.x > size.width + margins.right {
                 particles[index] = spawnParticle(margins: margins)
             }
         }
@@ -222,7 +229,8 @@ final class RainEmitterView: NSView {
     }
 
     private func ensureParticles() {
-        guard bounds.width > 0, bounds.height > 0 else {
+        let size = bounds.size
+        guard size.width > 0, size.height > 0 else {
             particles.removeAll()
             return
         }
@@ -231,7 +239,7 @@ final class RainEmitterView: NSView {
         if settings.rainAmount <= 0 {
             targetCount = 0
         } else {
-            let baseCount = max(80, Int(bounds.width * bounds.height / 4_500))
+            let baseCount = max(80, Int(size.width * size.height / 4_500))
             let rainMultiplier: Double
             if settings.rainAmount <= 0.5 {
                 rainMultiplier = 0.05 + settings.rainAmount / 0.5 * 0.95
@@ -244,8 +252,8 @@ final class RainEmitterView: NSView {
         if particles.count < targetCount {
             particles.append(contentsOf: (particles.count..<targetCount).map { _ in
                 Particle(point: CGPoint(
-                    x: CGFloat.random(in: 0...bounds.width),
-                    y: CGFloat.random(in: 0...bounds.height)
+                    x: CGFloat.random(in: 0...size.width),
+                    y: CGFloat.random(in: 0...size.height)
                 ), lengthNoise: CGFloat.random(in: -1...1))
             })
         } else if particles.count > targetCount {

@@ -67,21 +67,23 @@ struct ActiveWindowTracker {
     }
 
     private func accessibilityFrame(for windowElement: AXUIElement) -> CGRect? {
-        var positionValue: CFTypeRef?
-        var sizeValue: CFTypeRef?
-
-        guard AXUIElementCopyAttributeValue(windowElement, kAXPositionAttribute as CFString, &positionValue) == .success,
-              AXUIElementCopyAttributeValue(windowElement, kAXSizeAttribute as CFString, &sizeValue) == .success,
-              let positionValue,
-              let sizeValue else {
+        var attributeValues: CFArray?
+        guard AXUIElementCopyMultipleAttributeValues(
+            windowElement,
+            [kAXPositionAttribute, kAXSizeAttribute] as CFArray,
+            .stopOnError,
+            &attributeValues
+        ) == .success,
+              let values = attributeValues as? [AXValue],
+              values.count == 2 else {
             return nil
         }
 
         var position = CGPoint.zero
         var size = CGSize.zero
 
-        guard AXValueGetValue(positionValue as! AXValue, .cgPoint, &position),
-              AXValueGetValue(sizeValue as! AXValue, .cgSize, &size),
+        guard AXValueGetValue(values[0], .cgPoint, &position),
+              AXValueGetValue(values[1], .cgSize, &size),
               size.width > 0,
               size.height > 0 else {
             return nil

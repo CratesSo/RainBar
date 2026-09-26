@@ -86,8 +86,10 @@ final class RainController: ObservableObject {
             return
         }
 
-        if overlayWindow.frame != frame {
+        if overlayWindow.frame.size != frame.size {
             overlayWindow.setFrame(frame, display: true)
+        } else if overlayWindow.frame.origin != frame.origin {
+            overlayWindow.setFrameOrigin(frame.origin)
         }
         if !overlayWindow.isVisible {
             overlayWindow.show()

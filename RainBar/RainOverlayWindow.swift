@@ -130,13 +130,14 @@ private final class SnowEmitterView: NSView {
         let now = link.targetTimestamp
         let delta = lastTick == 0 ? 0 : max(0, min(now - lastTick, 1.0 / 20.0))
         lastTick = now
-        guard bounds.width > 0, bounds.height > 0 else { return }
+        let size = bounds.size
+        guard size.width > 0, size.height > 0 else { return }
 
         let step = delta * settings.speed / RainSettings.defaults.speed
         let radians = settings.angle * .pi / 180
         let horizontal = CGFloat(sin(radians))
         let vertical = CGFloat(cos(radians))
-        let wrapWidth = bounds.width + 60
+        let wrapWidth = size.width + 60
         for index in particles.indices {
             let distance = CGFloat(16.25625 * (particles[index].age + step / 2) * step)
             particles[index].age += step
@@ -145,10 +146,10 @@ private final class SnowEmitterView: NSView {
             particles[index].rotation += particles[index].spin * CGFloat(step)
 
             if particles[index].point.y < -30 {
-                particles[index] = makeParticle(age: 0)
+                particles[index] = makeParticle(age: 0, in: size)
             } else if particles[index].point.x < -30 {
                 particles[index].point.x += wrapWidth
-            } else if particles[index].point.x > bounds.width + 30 {
+            } else if particles[index].point.x > size.width + 30 {
                 particles[index].point.x -= wrapWidth
             }
         }
@@ -156,24 +157,25 @@ private final class SnowEmitterView: NSView {
     }
 
     private func ensureParticles() {
-        guard bounds.width > 0, bounds.height > 0 else { return }
-        let fallTime = sqrt(2 * Double(bounds.height + 60) / 16.25625)
+        let size = bounds.size
+        guard size.width > 0, size.height > 0 else { return }
+        let fallTime = sqrt(2 * Double(size.height + 60) / 16.25625)
         let targetCount = max(0, Int(23 * fallTime * settings.rainAmount / RainSettings.defaults.rainAmount))
         if particles.count < targetCount {
             particles.append(contentsOf: (particles.count..<targetCount).map { _ in
-                makeParticle(age: Double.random(in: 0...fallTime))
+                makeParticle(age: Double.random(in: 0...fallTime), in: size)
             })
         } else if particles.count > targetCount {
             particles.removeLast(particles.count - targetCount)
         }
     }
 
-    private func makeParticle(age: Double) -> Particle {
+    private func makeParticle(age: Double, in size: CGSize) -> Particle {
         let isFlake = Int.random(in: 0..<23) == 0
         return Particle(
             point: CGPoint(
-                x: CGFloat.random(in: -30...(bounds.width + 30)),
-                y: bounds.height + 30 - CGFloat(0.5 * 16.25625 * age * age)
+                x: CGFloat.random(in: -30...(size.width + 30)),
+                y: size.height + 30 - CGFloat(0.5 * 16.25625 * age * age)
             ),
             age: age,
             rotation: CGFloat.random(in: 0...(2 * .pi)),
