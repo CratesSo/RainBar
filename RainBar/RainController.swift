@@ -9,6 +9,8 @@ final class RainController: ObservableObject {
     private let tracker = ActiveWindowTracker()
     private var overlayWindow: RainOverlayWindow?
     private var trackingTimer: Timer?
+    private var lastTargetUpdate: TimeInterval = 0
+    private var wasDraggingWindow = false
     private var settingsCancellable: AnyCancellable?
     private var lastFullscreenSetting: Bool
 
@@ -55,9 +57,17 @@ final class RainController: ObservableObject {
 
     private func startTrackingTimer() {
         trackingTimer?.invalidate()
-        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                self?.updateOverlayTarget()
+                guard let self else { return }
+                let isDragging = !self.settingsStore.isFullscreen && NSEvent.pressedMouseButtons & 1 != 0
+                defer { self.wasDraggingWindow = isDragging }
+                // Track the drag and its final position promptly; keep idle AX queries at 4 Hz.
+                guard isDragging || self.wasDraggingWindow
+                    || ProcessInfo.processInfo.systemUptime - self.lastTargetUpdate >= 0.25 else {
+                    return
+                }
+                self.updateOverlayTarget()
             }
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -65,6 +75,7 @@ final class RainController: ObservableObject {
     }
 
     private func updateOverlayTarget(isFullscreen: Bool? = nil) {
+        lastTargetUpdate = ProcessInfo.processInfo.systemUptime
         guard let frame = currentTargetFrame(isFullscreen: isFullscreen) else {
             // Spaces transitions can temporarily leave no target. Keep tracking so the effect resumes.
             overlayWindow?.hide()
