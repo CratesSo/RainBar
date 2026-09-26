@@ -55,16 +55,19 @@ final class RainController: ObservableObject {
 
     private func startTrackingTimer() {
         trackingTimer?.invalidate()
-        trackingTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.updateOverlayTarget()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        trackingTimer = timer
     }
 
     private func updateOverlayTarget(isFullscreen: Bool? = nil) {
         guard let frame = currentTargetFrame(isFullscreen: isFullscreen) else {
-            stop()
+            // Spaces transitions can temporarily leave no target. Keep tracking so the effect resumes.
+            overlayWindow?.hide()
             return
         }
 
@@ -74,6 +77,9 @@ final class RainController: ObservableObject {
 
         if overlayWindow.frame != frame {
             overlayWindow.setFrame(frame, display: true)
+        }
+        if !overlayWindow.isVisible {
+            overlayWindow.show()
         }
     }
 
