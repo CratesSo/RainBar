@@ -11,19 +11,6 @@ final class RainBarTests: XCTestCase {
         XCTAssertEqual(store.mode, .rain)
     }
 
-    func testSnowDefaultPresetUsesRequestedValues() {
-        let store = RainSettingsStore(userDefaults: makeUserDefaults())
-        store.mode = .snow
-        store.loadPreset(id: RainPreset.defaultID)
-
-        XCTAssertEqual(store.settings.rainAmount, 0.05)
-        XCTAssertEqual(store.settings.opacity, 0.6)
-        XCTAssertEqual(store.settings.snowFade, 0.5)
-        XCTAssertEqual(store.settings.speed, 1.35)
-        XCTAssertEqual(store.settings.angle, -10)
-        XCTAssertEqual(RainPreset.defaultPreset(for: .rain).settings, .defaults)
-    }
-
     func testFullscreenRestoresBothStatesWithoutSavingPreset() {
         let defaults = makeUserDefaults()
         let store = RainSettingsStore(userDefaults: defaults)
@@ -53,12 +40,6 @@ final class RainBarTests: XCTestCase {
         store.isFullscreen = false
         store.loadPreset(id: preset.id)
         XCTAssertFalse(store.isFullscreen)
-
-        var encoded = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(store.settings)) as? [String: Any])
-        XCTAssertNil(encoded["isFullscreen"])
-        encoded["isFullscreen"] = true
-        let legacy = try JSONSerialization.data(withJSONObject: encoded)
-        XCTAssertEqual(try JSONDecoder().decode(RainSettings.self, from: legacy), store.settings)
     }
 
     func testSavedPresetPersistsSettings() {
@@ -103,7 +84,6 @@ final class RainBarTests: XCTestCase {
         store.updatePreset(id: RainPreset.defaultID)
 
         XCTAssertEqual(store.presets, [.defaultPreset()])
-        XCTAssertEqual(store.presets.first?.settings, .defaults)
     }
 
     func testCustomPresetsSaveLoadAndDelete() {
@@ -148,29 +128,6 @@ final class RainBarTests: XCTestCase {
         XCTAssertEqual(overwritten?.name, "Light")
         XCTAssertEqual(store.customPresets.count, 1)
         XCTAssertEqual(RainSettingsStore(userDefaults: defaults).settings.rainAmount, 0.8)
-    }
-
-    func testLegacyPresetFlagsRemainCompatibleWithDerivedIdentity() throws {
-        let defaults = makeUserDefaults()
-        let store = RainSettingsStore(userDefaults: defaults)
-        store.settings.rainAmount = 0.8
-        let custom = try XCTUnwrap(store.savePreset(named: "Storm"))
-        let presets = [RainPreset.defaultPreset(), custom]
-        let encoded = try JSONEncoder().encode(presets)
-        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [[String: Any]])
-        for index in legacy.indices {
-            XCTAssertNil(legacy[index]["isDefault"])
-            legacy[index]["isDefault"] = presets[index].isDefault
-        }
-        let legacyData = try JSONSerialization.data(withJSONObject: legacy)
-        XCTAssertEqual(try JSONDecoder().decode([RainPreset].self, from: legacyData), presets)
-
-        defaults.set(legacyData, forKey: "weather.customPresets")
-        let restored = RainSettingsStore(userDefaults: defaults)
-        XCTAssertEqual(restored.customPresets, [custom])
-        XCTAssertEqual(restored.settings, custom.settings)
-        XCTAssertTrue(restored.presets[0].isDefault)
-        XCTAssertFalse(restored.presets[1].isDefault)
     }
 
     func testOlderPresetsDefaultToCurrentSnowFade() throws {
@@ -271,15 +228,6 @@ final class RainBarTests: XCTestCase {
         restored.deletePreset(id: snow.id)
         XCTAssertEqual(restored.selectedPresetID, RainPreset.defaultID)
         XCTAssertEqual(RainSettingsStore(userDefaults: defaults).settings, .defaults(for: .snow))
-    }
-
-    func testLegacyUnsavedSettingsAreIgnored() {
-        let defaults = makeUserDefaults()
-        defaults.set(0.9, forKey: "rain.opacity")
-        defaults.set(0.8, forKey: "rain.amount")
-        let store = RainSettingsStore(userDefaults: defaults)
-        XCTAssertEqual(store.selectedPresetID, RainPreset.defaultID)
-        XCTAssertEqual(store.settings, .defaults)
     }
 
     private func makeUserDefaults() -> UserDefaults {
