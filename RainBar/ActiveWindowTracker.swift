@@ -2,8 +2,15 @@ import AppKit
 @preconcurrency import ApplicationServices
 
 struct ActiveWindowTracker {
+    @MainActor private static var hasRequestedAccessibility = false
+
     @MainActor
     func requestAccessibilityIfNeeded() {
+        guard !AXIsProcessTrusted(), !Self.hasRequestedAccessibility else {
+            return
+        }
+
+        Self.hasRequestedAccessibility = true
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
     }

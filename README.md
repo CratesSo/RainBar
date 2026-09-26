@@ -45,7 +45,7 @@ Rain and Snow have separate presets and can each use the same preset name. Start
 
 ## Permissions and local data
 
-RainBar requests Accessibility access through the macOS permission prompt when you click **Rain** or **Snow** and access has not been granted. Follow the prompt to **System Settings → Privacy & Security → Accessibility** and enable RainBar. If the app is not listed, add the built app with **+**.
+RainBar checks Accessibility access when you click **Rain** or **Snow**. If access has not been granted, it shows the macOS permission prompt at most once per launch. Follow the prompt to **System Settings → Privacy & Security → Accessibility** and enable RainBar. If the app is not listed, add the built app with **+**.
 
 The request does not block the effect. Until access is granted, or if the focused window cannot be read through Accessibility, RainBar falls back to the first eligible visible window. If no target window is found at startup, the effect does not start. If the target disappears while running, including during a Space switch, the overlay hides and resumes automatically when a target becomes available. After granting access, click **Rain** or **Snow** again if the effect is stopped.
 
