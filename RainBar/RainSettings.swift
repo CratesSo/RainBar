@@ -31,6 +31,7 @@ struct RainSettings: Codable, Equatable {
     var snowflakeSize: Double = 1.0
     var snowflakeAmount: Double = 1.0 / 23.0
     var snowflakesEnabled: Bool = true
+    var splashesEnabled: Bool = true
 
     static let defaults = RainSettings(
         opacity: 0.09947144905738735,
@@ -78,6 +79,7 @@ extension RainSettings {
         snowflakeSize = try values.decodeIfPresent(Double.self, forKey: .snowflakeSize) ?? snowSize
         snowflakeAmount = try values.decodeIfPresent(Double.self, forKey: .snowflakeAmount) ?? 1.0 / 23.0
         snowflakesEnabled = try values.decodeIfPresent(Bool.self, forKey: .snowflakesEnabled) ?? true
+        splashesEnabled = try values.decodeIfPresent(Bool.self, forKey: .splashesEnabled) ?? true
     }
 }
 

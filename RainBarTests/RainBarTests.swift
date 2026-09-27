@@ -85,6 +85,31 @@ final class RainBarTests: XCTestCase {
         XCTAssertEqual(restoredStore.settings.angle, 27.0)
     }
 
+    func testSplashTogglePersistsWithoutChangingOpacity() {
+        let defaults = makeUserDefaults()
+        let store = RainSettingsStore(userDefaults: defaults)
+        store.settings.splashOpacity = 0.35
+        store.settings.splashesEnabled = false
+        store.savePreset(named: "No Splashes")
+
+        let restored = RainSettingsStore(userDefaults: defaults)
+        XCTAssertFalse(restored.settings.splashesEnabled)
+        XCTAssertEqual(restored.settings.splashOpacity, 0.35)
+        restored.settings.splashesEnabled = true
+        XCTAssertEqual(restored.settings.splashOpacity, 0.35)
+    }
+
+    func testOlderPresetsKeepSplashesEnabled() throws {
+        let encoded = try JSONEncoder().encode(RainSettings.defaults)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        legacy.removeValue(forKey: "splashesEnabled")
+        let data = try JSONSerialization.data(withJSONObject: legacy)
+
+        let restored = try JSONDecoder().decode(RainSettings.self, from: data)
+        XCTAssertEqual(restored, .defaults)
+        XCTAssertTrue(restored.splashesEnabled)
+    }
+
     func testDefaultPresetCannotBeDeleted() {
         let defaults = makeUserDefaults()
         let store = RainSettingsStore(userDefaults: defaults)

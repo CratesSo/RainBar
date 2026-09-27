@@ -103,12 +103,17 @@ struct MenuBarView: View {
                                     value: $settingsStore.settings.snowSize,
                                     range: 0.25...3.0
                                 )
+                            } else {
+                                sliderControl(
+                                    title: "Rain Size",
+                                    valueText: String(format: "%.1f pt", settingsStore.settings.trailThickness),
+                                    value: $settingsStore.settings.trailThickness,
+                                    range: 1.6...3.3
+                                )
                             }
                         }
 
-                        if settingsStore.mode == .snow {
-                            Divider()
-                        }
+                        Divider()
 
                         LazyVGrid(
                             columns: [
@@ -192,13 +197,6 @@ struct MenuBarView: View {
                         if settingsStore.mode == .rain {
                             Divider()
 
-                            sliderControl(
-                                title: "Trail Variation",
-                                valueText: "\(Int((settingsStore.settings.trailLengthVariation * 100).rounded()))%",
-                                value: $settingsStore.settings.trailLengthVariation,
-                                range: 0.0...1.0
-                            )
-
                             LazyVGrid(
                                 columns: [
                                     GridItem(.flexible(), spacing: 16),
@@ -216,18 +214,25 @@ struct MenuBarView: View {
                                 )
 
                                 sliderControl(
-                                    title: "Trail Thickness",
-                                    valueText: String(format: "%.1f pt", settingsStore.settings.trailThickness),
-                                    value: $settingsStore.settings.trailThickness,
-                                    range: 1.6...3.3
+                                    title: "Trail Variation",
+                                    valueText: "\(Int((settingsStore.settings.trailLengthVariation * 100).rounded()))%",
+                                    value: $settingsStore.settings.trailLengthVariation,
+                                    range: 0.0...1.0
                                 )
                             }
 
                             Divider()
 
-                            RainColorPicker(
-                                rainColor: $settingsStore.settings.rainColor
-                            )
+                            HStack(spacing: 16) {
+                                RainColorPicker(
+                                    rainColor: $settingsStore.settings.rainColor
+                                )
+
+                                Toggle("Splashes", isOn: $settingsStore.settings.splashesEnabled)
+                                    .toggleStyle(.switch)
+                                    .controlSize(.small)
+                                    .fixedSize()
+                            }
                         }
 
                         if settingsStore.mode == .snow {

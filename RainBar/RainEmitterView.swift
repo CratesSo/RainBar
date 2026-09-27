@@ -84,6 +84,7 @@ final class RainEmitterView: NSView {
         self.settings = settings
         metrics = RainMetrics(settings: settings)
         if amountChanged { ensureParticles() }
+        if !settings.splashesEnabled { splashes.removeAll() }
         needsDisplay = true
     }
 
@@ -204,7 +205,7 @@ final class RainEmitterView: NSView {
     }
 
     private func addSplash(at point: CGPoint) {
-        guard settings.splashOpacity > 0,
+        guard settings.splashesEnabled, settings.splashOpacity > 0,
               point.x >= 0,
               point.x <= bounds.width else {
             return
