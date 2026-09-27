@@ -49,6 +49,11 @@ final class RainBarTests: XCTestCase {
         store.mode = .snow
         store.settings.opacity = 0.7
         store.settings.snowFade = 0.8
+        store.settings.snowSize = 2.0
+        store.settings.snowShape = .round
+        store.settings.snowflakeSize = 1.5
+        store.settings.snowflakeAmount = 0.75
+        store.settings.snowflakesEnabled = false
         store.settings.splashOpacity = 0.35
         store.settings.rainAmount = 0.9
         store.settings.speed = 2.25
@@ -64,6 +69,11 @@ final class RainBarTests: XCTestCase {
         XCTAssertEqual(restoredStore.mode, .snow)
         XCTAssertEqual(restoredStore.settings.opacity, 0.7)
         XCTAssertEqual(restoredStore.settings.snowFade, 0.8)
+        XCTAssertEqual(restoredStore.settings.snowSize, 2.0)
+        XCTAssertEqual(restoredStore.settings.snowShape, .round)
+        XCTAssertEqual(restoredStore.settings.snowflakeSize, 1.5)
+        XCTAssertEqual(restoredStore.settings.snowflakeAmount, 0.75)
+        XCTAssertFalse(restoredStore.settings.snowflakesEnabled)
         XCTAssertEqual(restoredStore.settings.splashOpacity, 0.35)
         XCTAssertEqual(restoredStore.settings.rainAmount, 0.9)
         XCTAssertEqual(restoredStore.settings.speed, 2.25)
@@ -142,6 +152,52 @@ final class RainBarTests: XCTestCase {
         XCTAssertEqual(restored.snowFade, 0.5)
     }
 
+    func testOlderPresetsPreserveOriginalSnowSize() throws {
+        var settings = RainSettings.defaults(for: .snow)
+        settings.snowFade = 0.8
+        let encoded = try JSONEncoder().encode(settings)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        legacy.removeValue(forKey: "snowSize")
+        let data = try JSONSerialization.data(withJSONObject: legacy)
+
+        let restored = try JSONDecoder().decode(RainSettings.self, from: data)
+
+        XCTAssertEqual(restored, settings)
+        XCTAssertEqual(restored.snowSize, 1.0)
+    }
+
+    func testOlderPresetsPreserveOriginalSnowShape() throws {
+        var settings = RainSettings.defaults(for: .snow)
+        settings.snowSize = 2.0
+        let encoded = try JSONEncoder().encode(settings)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        legacy.removeValue(forKey: "snowShape")
+        let data = try JSONSerialization.data(withJSONObject: legacy)
+
+        let restored = try JSONDecoder().decode(RainSettings.self, from: data)
+
+        XCTAssertEqual(restored, settings)
+        XCTAssertEqual(restored.snowShape, .square)
+    }
+
+    func testOlderPresetsPreserveSnowflakeSizeAndProportion() throws {
+        var settings = RainSettings.defaults(for: .snow)
+        settings.snowSize = 2.0
+        let encoded = try JSONEncoder().encode(settings)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        legacy.removeValue(forKey: "snowflakeSize")
+        legacy.removeValue(forKey: "snowflakeAmount")
+        legacy.removeValue(forKey: "snowflakesEnabled")
+        let data = try JSONSerialization.data(withJSONObject: legacy)
+
+        let restored = try JSONDecoder().decode(RainSettings.self, from: data)
+
+        settings.snowflakeSize = settings.snowSize
+        XCTAssertEqual(restored, settings)
+        XCTAssertEqual(restored.snowflakeAmount, 1.0 / 23.0)
+        XCTAssertTrue(restored.snowflakesEnabled)
+    }
+
     func testPresetsAreIsolatedByModeAndPersist() throws {
         let defaults = makeUserDefaults()
         let store = RainSettingsStore(userDefaults: defaults)
@@ -176,6 +232,26 @@ final class RainBarTests: XCTestCase {
         let store = RainSettingsStore(userDefaults: defaults)
         XCTAssertNil(defaults.object(forKey: "rain.customPresets"))
         XCTAssertTrue(store.customPresets.isEmpty)
+    }
+
+    func testStatusIconChangesKeepPopoverAnchorStable() throws {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        defer { NSStatusBar.system.removeStatusItem(item) }
+        let button = try XCTUnwrap(item.button)
+        var initialFrame: NSRect?
+
+        for (symbol, label) in [("cloud", "Off"), ("snowflake", "Snow"), ("cloud.rain", "Rain"), ("cloud", "Off")] {
+            let image = try XCTUnwrap(AppDelegate.statusImage(symbol: symbol, label: label))
+            XCTAssertTrue(image.isTemplate)
+            XCTAssertEqual(image.accessibilityDescription, "RainBar: \(label)")
+            button.image = image
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+            if let initialFrame {
+                XCTAssertEqual(button.frame, initialFrame, "\(label) moved the popover anchor")
+            } else {
+                initialFrame = button.frame
+            }
+        }
     }
 
     func testMenuExpansionReversesFromCurrentHeight() {

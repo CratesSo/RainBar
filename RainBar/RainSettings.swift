@@ -5,6 +5,10 @@ enum WeatherMode: String, Codable {
     case rain, snow
 }
 
+enum SnowShape: String, Codable {
+    case square, round
+}
+
 struct RainColor: Codable, Equatable {
     var red: Double
     var green: Double
@@ -22,6 +26,11 @@ struct RainSettings: Codable, Equatable {
     var rainColor: RainColor
     var angle: Double
     var snowFade: Double = 0.5
+    var snowSize: Double = 1.0
+    var snowShape: SnowShape = .square
+    var snowflakeSize: Double = 1.0
+    var snowflakeAmount: Double = 1.0 / 23.0
+    var snowflakesEnabled: Bool = true
 
     static let defaults = RainSettings(
         opacity: 0.09947144905738735,
@@ -64,6 +73,11 @@ extension RainSettings {
         rainColor = try values.decode(RainColor.self, forKey: .rainColor)
         angle = try values.decode(Double.self, forKey: .angle)
         snowFade = try values.decodeIfPresent(Double.self, forKey: .snowFade) ?? 0.5
+        snowSize = try values.decodeIfPresent(Double.self, forKey: .snowSize) ?? 1.0
+        snowShape = try values.decodeIfPresent(SnowShape.self, forKey: .snowShape) ?? .square
+        snowflakeSize = try values.decodeIfPresent(Double.self, forKey: .snowflakeSize) ?? snowSize
+        snowflakeAmount = try values.decodeIfPresent(Double.self, forKey: .snowflakeAmount) ?? 1.0 / 23.0
+        snowflakesEnabled = try values.decodeIfPresent(Bool.self, forKey: .snowflakesEnabled) ?? true
     }
 }
 

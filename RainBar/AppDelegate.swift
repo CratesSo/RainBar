@@ -38,10 +38,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] isRunning, mode in
                 let symbol = isRunning ? (mode == .rain ? "cloud.rain" : "snowflake") : "cloud"
                 let label = isRunning ? (mode == .rain ? "Rain" : "Snow") : "Off"
-                let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "RainBar: \(label)")
-                image?.isTemplate = true
-                self?.statusItem?.button?.image = image
+                self?.statusItem?.button?.image = Self.statusImage(symbol: symbol, label: label)
             }
+    }
+
+    static func statusImage(symbol: String, label: String) -> NSImage? {
+        guard let source = NSImage(systemSymbolName: symbol, accessibilityDescription: nil) else { return nil }
+        let size = NSSize(width: 18, height: 18)
+        let scale = min(size.width / source.size.width, size.height / source.size.height)
+        let drawingSize = NSSize(width: source.size.width * scale, height: source.size.height * scale)
+        // The popover anchors to this button; symbol changes must not resize it.
+        let image = NSImage(size: size, flipped: false) { bounds in
+            source.draw(in: NSRect(
+                x: bounds.midX - drawingSize.width / 2,
+                y: bounds.midY - drawingSize.height / 2,
+                width: drawingSize.width,
+                height: drawingSize.height
+            ))
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "RainBar: \(label)"
+        return image
     }
 
     func applicationWillTerminate(_ notification: Notification) {

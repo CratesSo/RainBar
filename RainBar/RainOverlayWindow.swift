@@ -63,8 +63,9 @@ private final class SnowEmitterView: NSView {
         var age: Double
         var rotation: CGFloat
         let spin: CGFloat
-        let size: CGFloat
-        let isFlake: Bool
+        let sizeNoise: CGFloat
+        // A stable threshold lets the slider convert existing particles in place.
+        let flakeThreshold: Double
     }
 
     private var settings = RainSettings.defaults
@@ -171,7 +172,6 @@ private final class SnowEmitterView: NSView {
     }
 
     private func makeParticle(age: Double, in size: CGSize) -> Particle {
-        let isFlake = Int.random(in: 0..<23) == 0
         return Particle(
             point: CGPoint(
                 x: CGFloat.random(in: -30...(size.width + 30)),
@@ -179,9 +179,9 @@ private final class SnowEmitterView: NSView {
             ),
             age: age,
             rotation: CGFloat.random(in: 0...(2 * .pi)),
-            spin: isFlake ? CGFloat.random(in: 0...0.4) : 0,
-            size: isFlake ? CGFloat.random(in: 7...8) : CGFloat.random(in: 2...4),
-            isFlake: isFlake
+            spin: CGFloat.random(in: 0...0.4),
+            sizeNoise: CGFloat.random(in: 0...1),
+            flakeThreshold: Double.random(in: 0..<1)
         )
     }
 
@@ -192,21 +192,30 @@ private final class SnowEmitterView: NSView {
         let inverseHeight = 1 / (bounds.height + 60)
         let opacity = CGFloat(settings.opacity)
         let fade = CGFloat(settings.snowFade)
+        let snowSizeScale = CGFloat(settings.snowSize)
+        let flakeSizeScale = CGFloat(settings.snowflakeSize)
         guard opacity > 0 else { return }
+        context.setFillColor(NSColor.white.cgColor)
         for particle in particles {
-            let radius = particle.size / 2
+            let isFlake = settings.snowflakesEnabled && particle.flakeThreshold < settings.snowflakeAmount
+            let size = isFlake
+                ? (7 + particle.sizeNoise) * flakeSizeScale
+                : (2 + 2 * particle.sizeNoise) * snowSizeScale
+            let radius = size / 2
             let rect = CGRect(x: particle.point.x - radius, y: particle.point.y - radius,
-                              width: particle.size, height: particle.size)
+                              width: size, height: size)
             guard rect.intersects(dirtyRect) else { continue }
             let progress = min(1, max(0, (top - particle.point.y) * inverseHeight))
             context.setAlpha(opacity * (1 - fade * progress))
-            if particle.isFlake, let flakeImage {
+            if isFlake, let flakeImage {
                 context.saveGState()
                 context.translateBy(x: particle.point.x, y: particle.point.y)
                 context.rotate(by: particle.rotation)
                 context.draw(flakeImage, in: CGRect(x: -radius, y: -radius,
-                                                  width: particle.size, height: particle.size))
+                                                  width: size, height: size))
                 context.restoreGState()
+            } else if settings.snowShape == .round {
+                context.fillEllipse(in: rect)
             } else if let dotImage {
                 context.draw(dotImage, in: rect)
             }
@@ -214,7 +223,8 @@ private final class SnowEmitterView: NSView {
     }
 
     private static func snowflakeImage() -> CGImage? {
-        guard let context = particleContext() else { return nil }
+        // Cover the largest flake (24 pt) at Retina resolution without upscaling.
+        guard let context = particleContext(scale: 4) else { return nil }
         context.setStrokeColor(NSColor.white.cgColor)
         context.setLineWidth(2.4)
         context.setLineCap(.round)
@@ -236,15 +246,17 @@ private final class SnowEmitterView: NSView {
         return context.makeImage()
     }
 
-    private static func particleContext() -> CGContext? {
-        CGContext(
+    private static func particleContext(scale: Int = 1) -> CGContext? {
+        let context = CGContext(
             data: nil,
-            width: 20,
-            height: 20,
+            width: 20 * scale,
+            height: 20 * scale,
             bitsPerComponent: 8,
             bytesPerRow: 0,
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         )
+        context?.scaleBy(x: CGFloat(scale), y: CGFloat(scale))
+        return context
     }
 }

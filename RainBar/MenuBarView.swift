@@ -85,12 +85,27 @@ struct MenuBarView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Divider()
 
-                        sliderControl(
-                            title: settingsStore.mode == .snow ? "Snow Amount" : "Rain Amount",
-                            valueText: "\(Int((settingsStore.settings.rainAmount * 100).rounded()))%",
-                            value: $settingsStore.settings.rainAmount,
-                            range: 0.0...1.0
-                        )
+                        HStack(spacing: 16) {
+                            sliderControl(
+                                title: settingsStore.mode == .snow ? "Snow Amount" : "Rain Amount",
+                                valueText: "\(Int((settingsStore.settings.rainAmount * 100).rounded()))%",
+                                value: $settingsStore.settings.rainAmount,
+                                range: 0.0...1.0
+                            )
+
+                            if settingsStore.mode == .snow {
+                                sliderControl(
+                                    title: "Snow Size",
+                                    valueText: String(format: "%.2f×", settingsStore.settings.snowSize),
+                                    value: $settingsStore.settings.snowSize,
+                                    range: 0.25...3.0
+                                )
+                            }
+                        }
+
+                        if settingsStore.mode == .snow {
+                            Divider()
+                        }
 
                         LazyVGrid(
                             columns: [
@@ -151,6 +166,26 @@ struct MenuBarView: View {
                             )
                         }
 
+                        if settingsStore.mode == .snow {
+                            Divider()
+
+                            HStack(spacing: 16) {
+                                sliderControl(
+                                    title: "Snowflake Size",
+                                    valueText: String(format: "%.2f×", settingsStore.settings.snowflakeSize),
+                                    value: $settingsStore.settings.snowflakeSize,
+                                    range: 0.25...3.0
+                                )
+
+                                sliderControl(
+                                    title: "Snowflake Amount",
+                                    valueText: String(format: "%.0f%%", settingsStore.settings.snowflakeAmount * 100),
+                                    value: $settingsStore.settings.snowflakeAmount,
+                                    range: 0.0...1.0
+                                )
+                            }
+                        }
+
                         if settingsStore.mode == .rain {
                             Divider()
 
@@ -190,6 +225,33 @@ struct MenuBarView: View {
                             RainColorPicker(
                                 rainColor: $settingsStore.settings.rainColor
                             )
+                        }
+
+                        if settingsStore.mode == .snow {
+                            Divider()
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Snow Shape")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                HStack {
+                                    Picker("Snow Shape", selection: $settingsStore.settings.snowShape) {
+                                        Text("Square").tag(SnowShape.square)
+                                        Text("Round").tag(SnowShape.round)
+                                    }
+                                    .pickerStyle(.radioGroup)
+                                    .horizontalRadioGroupLayout()
+                                    .labelsHidden()
+
+                                    Spacer()
+
+                                    Toggle("Snowflakes", isOn: $settingsStore.settings.snowflakesEnabled)
+                                        .toggleStyle(.switch)
+                                        .controlSize(.small)
+                                        .fixedSize()
+                                }
+                            }
                         }
                     }
                     .allowsHitTesting(areSettingsExpanded)
