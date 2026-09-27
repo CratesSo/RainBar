@@ -293,7 +293,10 @@ struct MenuBarView: View {
         }
 
     private func updateControlsHeight() {
-        layout.setControlsHeight(areSettingsExpanded ? fullControlsHeight : presetControlsHeight + 16)
+        layout.setControlsHeight(
+            areSettingsExpanded ? fullControlsHeight : presetControlsHeight + 16,
+            settingsExpanded: areSettingsExpanded
+        )
     }
 
     private func modeButton(_ mode: WeatherMode?, title: String, symbol: String) -> some View {
@@ -335,6 +338,7 @@ struct MenuBarView: View {
                     areSettingsExpanded.toggle()
                 } label: {
                     Image(systemName: "gearshape")
+                        .rotationEffect(.degrees(layout.gearRotation))
                         .frame(width: 32, height: 32)
                         .background(.primary.opacity(areSettingsExpanded ? 0.16 : 0.06), in: RoundedRectangle(cornerRadius: 9))
                 }

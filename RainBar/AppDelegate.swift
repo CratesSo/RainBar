@@ -93,6 +93,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @MainActor
 final class MenuLayout: ObservableObject {
     @Published private(set) var visibleControlsHeight: CGFloat = 0
+    @Published private(set) var gearRotation: Double = 90
+    private var targetGearRotation: Double = 90
     private var headerHeight: CGFloat = 64
     private var controlsHeight: CGFloat = 0
     private var isExpanded = false
@@ -111,11 +113,15 @@ final class MenuLayout: ObservableObject {
         onHeightChange(self.height)
     }
 
-    func setControlsHeight(_ height: CGFloat) {
-        guard controlsHeight != height else { return }
+    func setControlsHeight(_ height: CGFloat, settingsExpanded: Bool) {
+        let rotation = settingsExpanded ? 90.0 : 0.0
+        guard controlsHeight != height || targetGearRotation != rotation else { return }
         controlsHeight = height
+        targetGearRotation = rotation
         if isExpanded {
             animate(to: height, animated: !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        } else {
+            gearRotation = rotation
         }
     }
 
@@ -129,8 +135,10 @@ final class MenuLayout: ObservableObject {
         timer?.invalidate()
         timer = nil
         let start = visibleControlsHeight
-        guard animated, abs(target - start) > 0.5 else {
-            setVisibleHeight(target)
+        let startRotation = gearRotation
+        let targetRotation = targetGearRotation
+        guard animated, abs(target - start) > 0.5 || abs(targetRotation - startRotation) > 0.5 else {
+            setVisibleHeight(target, rotation: targetRotation)
             return
         }
 
@@ -143,7 +151,10 @@ final class MenuLayout: ObservableObject {
             MainActor.assumeIsolated {
                 let progress = min(1, (ProcessInfo.processInfo.systemUptime - startedAt) / 0.3)
                 let eased = progress * progress * (3 - 2 * progress)
-                self.setVisibleHeight(start + (target - start) * eased)
+                self.setVisibleHeight(
+                    start + (target - start) * eased,
+                    rotation: startRotation + (targetRotation - startRotation) * eased
+                )
                 if progress == 1 {
                     self.timer?.invalidate()
                     self.timer = nil
@@ -154,11 +165,12 @@ final class MenuLayout: ObservableObject {
         self.timer = timer
     }
 
-    private func setVisibleHeight(_ height: CGFloat) {
+    private func setVisibleHeight(_ height: CGFloat, rotation: Double) {
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             visibleControlsHeight = height
+            gearRotation = rotation
             onHeightChange(self.height)
         }
     }

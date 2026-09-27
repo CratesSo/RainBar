@@ -258,7 +258,7 @@ final class RainBarTests: XCTestCase {
         var reportedHeight: CGFloat = 0
         let layout = MenuLayout { reportedHeight = $0 }
         layout.setHeaderHeight(70)
-        layout.setControlsHeight(400)
+        layout.setControlsHeight(400, settingsExpanded: true)
         layout.setExpanded(true, animated: true)
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
 
@@ -276,6 +276,33 @@ final class RainBarTests: XCTestCase {
         layout.setExpanded(true, animated: false)
         XCTAssertEqual(layout.visibleControlsHeight, 400)
         XCTAssertEqual(reportedHeight, 470)
+    }
+
+    func testGearRotationTracksSettingsExpansionAndReversal() {
+        let layout = MenuLayout { _ in }
+        layout.setControlsHeight(400, settingsExpanded: true)
+        layout.setExpanded(true, animated: false)
+        XCTAssertEqual(layout.gearRotation, 90)
+
+        layout.setControlsHeight(80, settingsExpanded: false)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        XCTAssertEqual(layout.gearRotation, 90 * (layout.visibleControlsHeight - 80) / 320, accuracy: 0.001)
+
+        let partialRotation = layout.gearRotation
+        layout.setControlsHeight(400, settingsExpanded: true)
+        if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            XCTAssertEqual(layout.gearRotation, partialRotation)
+        }
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
+        XCTAssertEqual(layout.gearRotation, 90 * (layout.visibleControlsHeight - 80) / 320, accuracy: 0.001)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.3))
+        XCTAssertEqual(layout.gearRotation, 90)
+        XCTAssertEqual(layout.visibleControlsHeight, 400)
+
+        layout.setControlsHeight(80, settingsExpanded: false)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.4))
+        XCTAssertEqual(layout.gearRotation, 0)
+        XCTAssertEqual(layout.visibleControlsHeight, 80)
     }
 
     func testModeSwitchAndRelaunchRestoreSavedPresetInsteadOfEdits() throws {
