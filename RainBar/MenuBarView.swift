@@ -41,10 +41,13 @@ struct MenuBarView: View {
                     Button {
                         settingsStore.isFullscreen.toggle()
                     } label: {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .frame(width: Self.toolbarHeight, height: Self.toolbarHeight)
-                            .background(.primary.opacity(settingsStore.isFullscreen ? 0.16 : 0), in: RoundedRectangle(cornerRadius: 9))
-                            .background(.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 9))
+                        FullscreenArrows(separation: settingsStore.isFullscreen ? 3 : 0)
+                        .stroke(style: StrokeStyle(lineWidth: 1.2, lineCap: .butt, lineJoin: .round))
+                        .frame(width: 20, height: 20)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: settingsStore.isFullscreen)
+                        .frame(width: Self.toolbarHeight, height: Self.toolbarHeight)
+                        .background(.primary.opacity(settingsStore.isFullscreen ? 0.16 : 0), in: RoundedRectangle(cornerRadius: 9))
+                        .background(.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 9))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Fullscreen")
@@ -574,6 +577,38 @@ struct MenuBarView: View {
     }
 }
 
+
+private struct FullscreenArrows: Shape {
+    var separation: CGFloat
+
+    var animatableData: CGFloat {
+        get { separation }
+        set { separation = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let reach = 7 + separation
+        let start = CGPoint(x: rect.midX - reach, y: rect.midY - reach)
+        let end = CGPoint(x: rect.midX + reach, y: rect.midY + reach)
+
+        return Path { path in
+            path.move(to: start)
+            // A joined shaft is one stroke, avoiding an antialiased seam at its center.
+            if separation > 0 {
+                path.addLine(to: CGPoint(x: rect.midX - separation, y: rect.midY - separation))
+                path.move(to: CGPoint(x: rect.midX + separation, y: rect.midY + separation))
+            }
+            path.addLine(to: end)
+
+            path.move(to: CGPoint(x: start.x, y: start.y + 5))
+            path.addLine(to: start)
+            path.addLine(to: CGPoint(x: start.x + 5, y: start.y))
+            path.move(to: CGPoint(x: end.x - 5, y: end.y))
+            path.addLine(to: end)
+            path.addLine(to: CGPoint(x: end.x, y: end.y - 5))
+        }
+    }
+}
 
 private struct RainColorPicker: View {
     @Binding var rainColor: RainColor
