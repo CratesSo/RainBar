@@ -57,8 +57,8 @@ final class RainOverlayWindow: NSPanel {
 }
 
 
-private final class SnowEmitterView: NSView {
-    private struct Particle {
+final class SnowEmitterView: NSView {
+    struct Particle {
         var point: CGPoint
         var age: Double
         var rotation: CGFloat
@@ -69,7 +69,10 @@ private final class SnowEmitterView: NSView {
     }
 
     private var settings = RainSettings.defaults
-    private var particles: [Particle] = []
+    private(set) var particles: [Particle] = []
+    private let acceleration = 16.25625
+    private var vertical: Double { cos(settings.angle * .pi / 180) }
+    private var fallTime: Double { sqrt(2 * Double(bounds.height + 60) / (acceleration * vertical)) }
     private var frameDisplayLink: CADisplayLink?
     private var lastTick: TimeInterval = 0
     private let dotImage: CGImage? = {
@@ -85,7 +88,13 @@ private final class SnowEmitterView: NSView {
     func apply(settings: RainSettings) {
         guard settings != self.settings else { return }
         let amountChanged = settings.rainAmount != self.settings.rainAmount
+        let oldVertical = vertical
         self.settings = settings
+        // Preserve each particle's position and phase when the wind changes.
+        let ageScale = sqrt(oldVertical / vertical)
+        for index in particles.indices {
+            particles[index].age *= ageScale
+        }
         if amountChanged { ensureParticles() }
         needsDisplay = true
     }
@@ -100,6 +109,9 @@ private final class SnowEmitterView: NSView {
             for index in particles.indices {
                 particles[index].point.x = (particles[index].point.x + 30) * scaleX - 30
                 particles[index].point.y = (particles[index].point.y + 30) * scaleY - 30
+                // Fall distance is proportional to age squared. Scaling only
+                // positions compresses the next respawns into a repeating band.
+                particles[index].age *= sqrt(Double(scaleY))
             }
         }
         ensureParticles()
@@ -131,6 +143,10 @@ private final class SnowEmitterView: NSView {
         let now = link.targetTimestamp
         let delta = lastTick == 0 ? 0 : max(0, min(now - lastTick, 1.0 / 20.0))
         lastTick = now
+        advance(by: delta)
+    }
+
+    func advance(by delta: TimeInterval) {
         let size = bounds.size
         guard size.width > 0, size.height > 0 else { return }
 
@@ -139,15 +155,19 @@ private final class SnowEmitterView: NSView {
         let horizontal = CGFloat(sin(radians))
         let vertical = CGFloat(cos(radians))
         let wrapWidth = size.width + 60
+        let fallTime = self.fallTime
         for index in particles.indices {
-            let distance = CGFloat(16.25625 * (particles[index].age + step / 2) * step)
+            let distance = CGFloat(acceleration * (particles[index].age + step / 2) * step)
             particles[index].age += step
             particles[index].point.x += distance * horizontal
             particles[index].point.y -= distance * vertical
             particles[index].rotation += particles[index].spin * CGFloat(step)
 
-            if particles[index].point.y < -30 {
-                particles[index] = makeParticle(age: 0, in: size)
+            if particles[index].age >= fallTime {
+                // Carry time past the boundary forward instead of snapping
+                // every particle crossing in this frame to the same age.
+                let age = particles[index].age.truncatingRemainder(dividingBy: fallTime)
+                particles[index] = makeParticle(age: age, in: size)
             } else if particles[index].point.x < -30 {
                 particles[index].point.x += wrapWidth
             } else if particles[index].point.x > size.width + 30 {
@@ -160,7 +180,7 @@ private final class SnowEmitterView: NSView {
     private func ensureParticles() {
         let size = bounds.size
         guard size.width > 0, size.height > 0 else { return }
-        let fallTime = sqrt(2 * Double(size.height + 60) / 16.25625)
+        let fallTime = self.fallTime
         let targetCount = max(0, Int(23 * fallTime * settings.rainAmount / RainSettings.defaults.rainAmount))
         if particles.count < targetCount {
             particles.append(contentsOf: (particles.count..<targetCount).map { _ in
@@ -175,7 +195,7 @@ private final class SnowEmitterView: NSView {
         return Particle(
             point: CGPoint(
                 x: CGFloat.random(in: -30...(size.width + 30)),
-                y: size.height + 30 - CGFloat(0.5 * 16.25625 * age * age)
+                y: size.height + 30 - CGFloat(0.5 * acceleration * vertical * age * age)
             ),
             age: age,
             rotation: CGFloat.random(in: 0...(2 * .pi)),

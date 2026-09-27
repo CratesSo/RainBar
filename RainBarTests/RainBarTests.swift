@@ -3,6 +3,49 @@ import XCTest
 
 @MainActor
 final class RainBarTests: XCTestCase {
+    func testSnowPreservesFallPhaseAcrossResizeAndWindChanges() {
+        let view = SnowEmitterView(frame: NSRect(x: 0, y: 0, width: 800, height: 300))
+        var settings = RainSettings.defaults(for: .snow)
+        view.apply(settings: settings)
+        let phases = view.particles.map { $0.age / snowFallTime(height: 300, settings: settings) }
+
+        view.setFrameSize(NSSize(width: 1600, height: 1200))
+        settings.angle = 45
+        view.apply(settings: settings)
+        let duration = snowFallTime(height: 1200, settings: settings)
+        for (particle, phase) in zip(view.particles, phases) {
+            XCTAssertEqual(particle.age / duration, phase, accuracy: 1e-12)
+            XCTAssertEqual(particle.point.y, 1230 - 1260 * phase * phase, accuracy: 1e-9)
+        }
+    }
+
+    func testSnowRetainsDistinctPhasesAcrossRepeatedRecycling() {
+        let view = SnowEmitterView(frame: NSRect(x: 0, y: 0, width: 800, height: 1200))
+        let settings = RainSettings.defaults(for: .snow)
+        view.apply(settings: settings)
+        let initialAges = view.particles.map(\.age)
+        let duration = snowFallTime(height: 1200, settings: settings)
+        // Several complete falls, with varying frame intervals.
+        let deltas = [1.0 / 60, 1.0 / 120, 1.0 / 20]
+        var elapsed = 0.0
+        for frame in 0..<3600 {
+            let delta = deltas[frame % deltas.count]
+            view.advance(by: delta)
+            elapsed += delta * settings.speed / RainSettings.defaults.speed
+        }
+        XCTAssertEqual(view.particles.count, initialAges.count)
+        for (particle, initialAge) in zip(view.particles, initialAges) {
+            let expectedAge = (initialAge + elapsed).truncatingRemainder(dividingBy: duration)
+            XCTAssertEqual(particle.age, expectedAge, accuracy: 1e-8)
+            let phase = expectedAge / duration
+            XCTAssertEqual(particle.point.y, 1230 - 1260 * phase * phase, accuracy: 1e-6)
+        }
+    }
+
+    private func snowFallTime(height: Double, settings: RainSettings) -> Double {
+        sqrt(2 * (height + 60) / (16.25625 * cos(settings.angle * .pi / 180)))
+    }
+
     func testSettingsStoreUsesDefaultsWhenNoValuesExist() {
         let defaults = makeUserDefaults()
         let store = RainSettingsStore(userDefaults: defaults)
