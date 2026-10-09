@@ -1,0 +1,52 @@
+# macOS
+.DS_Store
+._*
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdata/
+xcuserdata/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+
+# Local editor state
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local app builds and test output
+*.app/
+*.dSYM/
+*.xcarchive/
+*.xcresult/
+*.trace/
+*.dmg
+*.pkg
+
+# Local credentials and signing material
+.env
+.env.*
+!.env.example
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile
+
+# Local AI-agent instructions and configuration
+AGENTS.md
+global_agents.md
+local_agents.md
+SKILL.md
+CLAUDE.md
+.codex/
+.agents/
+.claude/
+/skills/
